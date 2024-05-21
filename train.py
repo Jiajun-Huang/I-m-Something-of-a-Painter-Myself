@@ -37,7 +37,7 @@ if __name__ == '__main__':
     parser.add_argument('--lr', type=float, default=0.0002)
     
     parser.add_argument('--data_path', type=str, default='data')
-    parser.add_argument('--en_wandb', type=bool, default=False)
+    parser.add_argument('--en_wandb', type=bool, default=True)
 
     # sample interval
     parser.add_argument('--sample_interval', type=int, default=100)
@@ -67,10 +67,15 @@ if __name__ == '__main__':
     # create optimizer
     optimizer = optim.Adam(gan.parameters(), lr=args.lr)
 
+    # check if cuda is available
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    gan.to(device)
     
     # train model
     for epoch in range(args.epochs):
         for i, (real, fake) in enumerate(data_loader):
+            real = real.to(device)
+            fake = fake.to(device)
             gan.optimize(real, fake)
 
             # logging 
@@ -84,10 +89,10 @@ if __name__ == '__main__':
                 fake_A = Dataset.image_inverse_preprocess(fake_A)
                 fake_B = Dataset.image_inverse_preprocess(fake_B)
                 # save images to output
-                plt.imshow(fake_A[0].permute(1, 2, 0))
-                plt.savefig(f'output/fake_A_{epoch}.png')
-                plt.imshow(fake_B[0].permute(1, 2, 0))
-                plt.savefig(f'output/fake_B_{epoch}.png')
+                # plt.imshow(fake_A[0].permute(1, 2, 0))
+                # plt.savefig(f'output/fake_A_{epoch}.png')
+                # plt.imshow(fake_B[0].permute(1, 2, 0))
+                # plt.savefig(f'output/fake_B_{epoch}.png')
 
                 if args.en_wandb:
                     wandb.log({'real_A': [wandb.Image(real[0])], 'fake_B': [wandb.Image(fake_B[0])], 'real_B': [wandb.Image(fake[0])], 'fake_A': [wandb.Image(fake_A[0])]})

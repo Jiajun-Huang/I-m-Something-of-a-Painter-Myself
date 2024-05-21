@@ -49,8 +49,9 @@ class Dataset(Dataset):
         '''
         image: (B, C, H, W)
         '''
-        mean = torch.tensor([0.5, 0.5, 0.5])
-        std = torch.tensor([0.5, 0.5, 0.5])
+        device = image.device   
+        mean = torch.tensor([0.5, 0.5, 0.5]).to(device)
+        std = torch.tensor([0.5, 0.5, 0.5]).to(device)
 
         # Denormalize the image
         image = image * std[None, :, None, None] + mean[None, :, None, None]
