@@ -44,6 +44,9 @@ class Cycle_GAN(nn.Module):
         # optimizers
         self._gen_opt = torch.optim.Adam(list(self._gen_AB.parameters()) + list(self._gen_BA.parameters()), lr=0.0002, betas=(0.5, 0.999))
         self._dis_opt = torch.optim.Adam(list(self._dis_A.parameters()) + list(self._dis_B.parameters()), lr=0.0002, betas=(0.5, 0.999))
+        # self._schdule_G = torch.optim.lr_scheduler.LambdaLR(self._gen_opt, lr_lambda=lambda epoch: 1 - epoch / 100)
+        # self._schdule_D = torch.optim.lr_scheduler.LambdaLR(self._dis_opt, lr_lambda=lambda epoch: 1 - epoch / 100)
+
 
         # loss buffers
         self._gen_loss = None
@@ -101,6 +104,13 @@ class Cycle_GAN(nn.Module):
         gen_loss = cycle_loss * 10 + id_loss_A + id_loss_B + gen_loss_A + gen_loss_B
         gen_loss.backward()
         self._gen_opt.step()
+        self._gen_loss = {
+            'cycle_loss': cycle_loss,
+            'id_loss_A': id_loss_A,
+            'id_loss_B': id_loss_B,
+            'gen_loss_A': gen_loss_A,
+            'gen_loss_B': gen_loss_B
+        }
         return gen_loss
 
     def backward_D(self):
@@ -116,6 +126,10 @@ class Cycle_GAN(nn.Module):
         dis_loss = (dis_loss_A + dis_loss_B) / 2
         dis_loss.backward()
         self._dis_opt.step()
+        self._dis_loss = {
+            'dis_loss_A': dis_loss_A,
+            'dis_loss_B': dis_loss_B
+        }
         return dis_loss
 
         
@@ -136,14 +150,24 @@ class Cycle_GAN(nn.Module):
         # optimize the generators
         self.set_requires_grad([self._dis_A, self._dis_B], False)
         self.forward_G(real_A, real_B)
-        self._gen_loss = self.backward_G()
+        self.backward_G()
 
         # optimize the discriminators
         self.set_requires_grad([self._dis_A, self._dis_B], True)
         self.forward_D(real_A, real_B)
-        self._dis_loss = self.backward_D()
+        self.backward_D()
+
+        # self._schdule_D.step()
+        # self._schdule_G.step()  
+
     
     def sample(self, real_A, real_B):
+        # no gradient calculation
+        self._gen_AB.eval()
+        self._gen_BA.eval()
+        self._dis_A.eval()
+        self._dis_B.eval()
+
         fake_B = self._gen_AB(real_A)
         fake_A = self._gen_BA(real_B)
         return fake_A, fake_B

@@ -54,8 +54,8 @@ class Generator(nn.Module):
                 nn.BatchNorm2d(c_out),
                 nn.ReLU(inplace=True)
             ]
-        # self.model += [nn.ReflectionPad2d(3)]
-        # self.model += [nn.Conv2d(3, 3, kernel_size=7, padding=0)]
+        self.model += [nn.ReflectionPad2d(3)]
+        self.model += [nn.Conv2d(3, 3, kernel_size=7, padding=0)]
         # self.model += [nn.Tanh()]
 
         self.model = nn.Sequential(*self.model)

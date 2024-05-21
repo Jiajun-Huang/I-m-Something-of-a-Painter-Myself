@@ -13,7 +13,7 @@ from data_loader import Dataset
 from model.cyclegan import Cycle_GAN
 from model.modules import Discriminator, Generator
 
-
+from collections import Counter
 def train(model, data_loader, optimizer, args):
     '''
     model: Cycle_GAN model
@@ -78,21 +78,30 @@ if __name__ == '__main__':
     
     # train model
     for epoch in range(args.epochs):
-        for i, (real, fake) in enumerate(tqdm(data_loader)):
-            real = real.to(device)
-            fake = fake.to(device)
-            gan.optimize(real, fake)
+        gen_loss_avg = {}
+        dis_loss_avg = {}
+        for i, (real_A, real_B) in enumerate(tqdm(data_loader)):
+            real_A = real_A.to(device)
+            real_B = real_B.to(device)
+            gan.optimize(real_A, real_B)
+            gen_loss, dis_loss = gan.get_losses()
+            # sum up loss in the dictionary
 
             # logging 
-            
+            gen_loss_avg = dict(Counter(gen_loss_avg) + Counter(gen_loss))
+            dis_loss_avg = dict(Counter(dis_loss_avg) + Counter(dis_loss))
 
+        gen_loss_avg = {k: v / i for k, v in gen_loss_avg.items()}
+        dis_loss_avg = {k: v / i for k, v in dis_loss_avg.items()}
+        gen_loss_avg_sum = sum(gen_loss_avg.values())
+        dis_loss_avg_sum = sum(dis_loss_avg.values())
         if epoch % args.sample_interval == 0:
-            fake_A, fake_B = gan.sample(real_A=real, real_B=fake)
+            fake_A, fake_B = gan.sample(real_A=real_A, real_B=real_B)
             # inverse process
             fake_A = Dataset.image_inverse_preprocess(fake_A)
             fake_B = Dataset.image_inverse_preprocess(fake_B)
-            real = Dataset.image_inverse_preprocess(real)
-            fake = Dataset.image_inverse_preprocess(fake)
+            real_A = Dataset.image_inverse_preprocess(real_A)
+            real_B = Dataset.image_inverse_preprocess(real_B)
             # save images to output
             # plt.imshow(fake_A[0].permute(1, 2, 0))
             # plt.savefig(f'output/fake_A_{epoch}.png')
@@ -101,12 +110,13 @@ if __name__ == '__main__':
 
             if args.en_wandb:
 
-                wandb.log({'real_A': [wandb.Image(real)], 'fake_B': [wandb.Image(fake_B)], 'real_B': [wandb.Image(fake)], 'fake_A': [wandb.Image(fake_A)]})
+                wandb.log({'real_A': [wandb.Image(real_A)], 'fake_B': [wandb.Image(fake_B)], 'real_B': [wandb.Image(real_B)], 'fake_A': [wandb.Image(fake_A)]})
             
-        gen_loss, dis_loss = gan.get_losses()
         print(f'Epoch: {epoch}, Generator Loss: {gen_loss}, Discriminator Loss: {dis_loss}')
         if args.en_wandb:
-            wandb.log({'train_gen_loss': gen_loss, 'train_dis_loss': dis_loss})
+            wandb.log({'train_gen_loss': gen_loss_avg_sum, 'train_dis_loss': dis_loss_avg_sum})
+            wandb.log(gen_loss_avg)
+            wandb.log(dis_loss_avg)
             wandb.log({'epoch': epoch})        
             # if i % args.save_interval == 0:
             #     torch.save(gan.state_dict(), 'model.pth')
