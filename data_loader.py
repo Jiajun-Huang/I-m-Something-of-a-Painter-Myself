@@ -45,6 +45,21 @@ class Dataset(Dataset):
 
         return image
 
+    def image_inverse_preprocess(image):
+        '''
+        image: (B, C, H, W)
+        '''
+        mean = torch.tensor([0.5, 0.5, 0.5])
+        std = torch.tensor([0.5, 0.5, 0.5])
+
+        # Denormalize the image
+        image = image * std[None, :, None, None] + mean[None, :, None, None]
+
+        # Transform image back to [0, 255]
+        image = image * 255.0
+        image = image.type(torch.uint8)
+        return image
+
     def __len__(self):
         return len(max(self.real_images, self.fake_images, key=len))
     
@@ -64,6 +79,18 @@ class Dataset(Dataset):
 
         return real_image, fake_image
         
+
+if __name__ == '__main__':
+    data_loader = DataLoader(Dataset("data/photo_jpg", "data/monet_jpg", 1), batch_size=1)
+    
+    for i, (real, fake) in enumerate(data_loader):
+        real_image = Dataset.image_inverse_preprocess(real)
+        fake_image = Dataset.image_inverse_preprocess(fake)
+
+        plt.imshow(real_image[0].permute(1, 2, 0))
+        plt.imshow(fake_image[0].permute(1, 2, 0))
+        plt.show()
+
 
         
     
