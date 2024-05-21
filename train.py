@@ -52,10 +52,10 @@ if __name__ == '__main__':
     torch.manual_seed(args.seed)
 
     # create model
-    gan = Cycle_GAN(args.nr_resnet, args.nr_updownsample)
+    gan = Cycle_GAN()
 
     # create data loader
-    data_loader = DataLoader(Dataset(args.data_path, args.batch_size), batch_size=args.batch_size, shuffle=True)
+    data_loader = DataLoader(Dataset("data/photo_jpg", "data/monet_jpg", args.batch_size), batch_size=args.batch_size, shuffle=True)
 
     # create optimizer
     optimizer = optim.Adam(gan.parameters(), lr=args.lr)
@@ -63,8 +63,18 @@ if __name__ == '__main__':
     
     # train model
     for epoch in range(args.epochs):
-        for i, data in enumerate(data_loader):
-            pass
+        for i, (real, fake) in enumerate(data_loader):
+            gan.optimize(real, fake)
+            if i % args.sample_interval == 0:
+                # gan.sample()
+                pass
+            if i % args.save_interval == 0:
+                torch.save(gan.state_dict(), 'model.pth')
+            print(f'Epoch: {epoch}, Iter: {i}')
+
+
+
+            
 
 
 

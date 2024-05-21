@@ -32,7 +32,7 @@ class Dataset(Dataset):
 
         # random crop image
         i, j, h, w = RandomCrop.get_params(image, output_size=(256, 256))
-        image = image[:, :, i:i+h, j:j+w]
+        image = image[:, i:i+h, j:j+w]
 
         # random horizontal flip
         image = RandomHorizontalFlip()(image)
@@ -46,14 +46,16 @@ class Dataset(Dataset):
         return image
 
     def __len__(self):
-        return len(self.data)
+        return len(max(self.real_images, self.fake_images, key=len))
     
     def __getitem__(self, idx):
         '''
         image: (B, C, H, W)
         '''
-        real_img_path = os.path.join(self.real_image_path, self.real_images[idx])
-        fake_img_path = os.path.join(self.fake_image_path, self.fake_images[idx])
+        idx_real = idx % len(self.real_images)
+        idx_fake = idx % len(self.fake_images)
+        real_img_path = os.path.join(self.real_image_path, self.real_images[idx_real])
+        fake_img_path = os.path.join(self.fake_image_path, self.fake_images[idx_fake])
         real_image = read_image(real_img_path)
         fake_image = read_image(fake_img_path)
         

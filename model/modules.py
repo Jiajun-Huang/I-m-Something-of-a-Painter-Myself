@@ -2,16 +2,16 @@ import torch.nn as nn
 
 
 class ResnetBlock(nn.Module):
-    def __init__(self, dim):
+    def __init__(self, channel=3):
         super(ResnetBlock, self).__init__()
         self.model = nn.Sequential(
             nn.ReflectionPad2d(1),
-            nn.Conv2d(dim, dim, 3),
-            nn.InstanceNorm2d(dim),
+            nn.Conv2d(channel, channel, 3),
+            nn.InstanceNorm2d(channel),
             nn.ReLU(inplace=True),
             nn.ReflectionPad2d(1),
-            nn.Conv2d(dim, dim, 3),
-            nn.InstanceNorm2d(dim)
+            nn.Conv2d(channel, channel, 3),
+            nn.InstanceNorm2d(channel)
         )
 
     def forward(self, x):
@@ -23,37 +23,41 @@ class ResnetBlock(nn.Module):
 
         return x
 
-class Generator(nn.module):
+class Generator(nn.Module):
 
-    def __init__(self, dim=100, in_out_channel = 3, num_residual_blocks=6, num_up_downsampling=2):
+    def __init__(self, dim=256, in_out_channel = 3, num_residual_blocks=6):
         super(Generator, self).__init__()
         # use covolutional layers
         self.model = []
-
+        num_up_downsampling = 2
         # down sampling
         for i in range(num_up_downsampling):
             c_in = in_out_channel * 2** i
             c_out = in_out_channel * 2 ** (i+1)
             self.model += [
-                nn.Conv2d(c_in, c_out, 7, 1, 3),
+                nn.Conv2d(c_in, c_out, kernel_size=3, stride=2, padding=1), # [(W−K+2P)/S]+1  256 - 3 + 1 = 254
                 nn.BatchNorm2d(c_out),
                 nn.ReLU(inplace=True)
             ]
 
         # residual blocks
         for i in range(num_residual_blocks):
-            self.model += [ResnetBlock(dim)]
+            channel = c_out
+            self.model += [ResnetBlock(channel)]
         
         # up sampling
         for i in range(num_up_downsampling):
             c_in = in_out_channel * 2 ** (num_up_downsampling - i)
             c_out = in_out_channel * 2 ** (num_up_downsampling - i - 1)
             self.model += [
-                nn.ConvTranspose2d(c_in, c_out, 3, 2, 1, 1),
+                nn.ConvTranspose2d(c_in, c_out, kernel_size=3, stride=2, output_padding=1, padding=1),
                 nn.BatchNorm2d(c_out),
                 nn.ReLU(inplace=True)
             ]
-        
+        # self.model += [nn.ReflectionPad2d(3)]
+        # self.model += [nn.Conv2d(3, 3, kernel_size=7, padding=0)]
+        # self.model += [nn.Tanh()]
+
         self.model = nn.Sequential(*self.model)
         
         
@@ -68,15 +72,15 @@ class Generator(nn.module):
         return x
     
 
-class Discriminator(nn.module):
+class Discriminator(nn.Module):
 
-    def __init__(self, dim=100, num_upsampling=2):
+    def __init__(self, num_upsampling=2):
         super(Discriminator, self).__init__()
         # up sampling
         self.model = []
 
         for i in range(num_upsampling):
-            c_in = 3
+            c_in = 3 * 2 ** i
             c_out = 3 * 2 ** (i+1)
             self.model += [
                 nn.Conv2d(c_in, c_out, 3, 2, 1),
