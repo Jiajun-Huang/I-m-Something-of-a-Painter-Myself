@@ -25,7 +25,7 @@ class ResnetBlock(nn.Module):
 
 class Generator(nn.Module):
 
-    def __init__(self, dim=256, in_out_channel = 3, num_residual_blocks=6):
+    def __init__(self, dim=256, in_out_channel = 3, num_residual_blocks=3):
         super(Generator, self).__init__()
         # use covolutional layers
         self.model = []

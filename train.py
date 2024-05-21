@@ -3,8 +3,9 @@ import argparse
 import torch
 import torch.nn as nn
 import torch.optim as optim
+import wandb
 from torch.utils.data import DataLoader
-
+import matplotlib.pyplot as plt
 from data_loader import Dataset
 from model.cyclegan import Cycle_GAN
 from model.modules import Discriminator, Generator
@@ -48,12 +49,18 @@ if __name__ == '__main__':
     parser.add_argument('--seed', type=int, default=42)
     args = parser.parse_args()
 
+    # init wandb
+    if args.en_wandb:
+        wandb.init(project='Cycle-GAN')
+        wandb.config.update(args)
+
+
     # set seed
     torch.manual_seed(args.seed)
 
     # create model
     gan = Cycle_GAN()
-
+    
     # create data loader
     data_loader = DataLoader(Dataset("data/photo_jpg", "data/monet_jpg", args.batch_size), batch_size=args.batch_size, shuffle=True)
 
@@ -65,12 +72,30 @@ if __name__ == '__main__':
     for epoch in range(args.epochs):
         for i, (real, fake) in enumerate(data_loader):
             gan.optimize(real, fake)
+
+            # logging 
+            gen_loss, dis_loss = gan.get_losses()
+            if args.en_wandb:
+                wandb.log({'train_gen_loss': gen_loss, 'train_dis_loss': dis_loss})
+
             if i % args.sample_interval == 0:
-                # gan.sample()
-                pass
-            if i % args.save_interval == 0:
-                torch.save(gan.state_dict(), 'model.pth')
-            print(f'Epoch: {epoch}, Iter: {i}')
+                fake_A, fake_B = gan.sample(real_A=real, real_B=fake)
+                # inverse process
+                fake_A = Dataset.image_inverse_preprocess(fake_A)
+                fake_B = Dataset.image_inverse_preprocess(fake_B)
+                # save images to output
+                plt.imshow(fake_A[0].permute(1, 2, 0))
+                plt.savefig(f'output/fake_A_{epoch}.png')
+                plt.imshow(fake_B[0].permute(1, 2, 0))
+                plt.savefig(f'output/fake_B_{epoch}.png')
+
+                if args.en_wandb:
+                    wandb.log({'real_A': [wandb.Image(real[0])], 'fake_B': [wandb.Image(fake_B[0])], 'real_B': [wandb.Image(fake[0])], 'fake_A': [wandb.Image(fake_A[0])]})
+                
+            # if i % args.save_interval == 0:
+            #     torch.save(gan.state_dict(), 'model.pth')
+            
+
 
 
 
