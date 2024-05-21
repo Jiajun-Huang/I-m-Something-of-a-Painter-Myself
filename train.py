@@ -83,20 +83,22 @@ if __name__ == '__main__':
             if args.en_wandb:
                 wandb.log({'train_gen_loss': gen_loss, 'train_dis_loss': dis_loss})
 
-            if i % args.sample_interval == 0:
-                fake_A, fake_B = gan.sample(real_A=real, real_B=fake)
-                # inverse process
-                fake_A = Dataset.image_inverse_preprocess(fake_A)
-                fake_B = Dataset.image_inverse_preprocess(fake_B)
-                # save images to output
-                # plt.imshow(fake_A[0].permute(1, 2, 0))
-                # plt.savefig(f'output/fake_A_{epoch}.png')
-                # plt.imshow(fake_B[0].permute(1, 2, 0))
-                # plt.savefig(f'output/fake_B_{epoch}.png')
+        if epoch % args.sample_interval == 0:
+            fake_A, fake_B = gan.sample(real_A=real, real_B=fake)
+            # inverse process
+            fake_A = Dataset.image_inverse_preprocess(fake_A)
+            fake_B = Dataset.image_inverse_preprocess(fake_B)
+            # save images to output
+            # plt.imshow(fake_A[0].permute(1, 2, 0))
+            # plt.savefig(f'output/fake_A_{epoch}.png')
+            # plt.imshow(fake_B[0].permute(1, 2, 0))
+            # plt.savefig(f'output/fake_B_{epoch}.png')
 
-                if args.en_wandb:
-                    wandb.log({'real_A': [wandb.Image(real[0])], 'fake_B': [wandb.Image(fake_B[0])], 'real_B': [wandb.Image(fake[0])], 'fake_A': [wandb.Image(fake_A[0])]})
-                
+            if args.en_wandb:
+                wandb.log({'real_A': [wandb.Image(real)], 'fake_B': [wandb.Image(fake_B)], 'real_B': [wandb.Image(fake)], 'fake_A': [wandb.Image(fake_A)]})
+            
+        if args.en_wandb:
+            wandb.log({'epoch': epoch})        
             # if i % args.save_interval == 0:
             #     torch.save(gan.state_dict(), 'model.pth')
             
