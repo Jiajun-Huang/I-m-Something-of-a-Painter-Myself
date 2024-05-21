@@ -89,8 +89,8 @@ class Cycle_GAN(nn.Module):
         cycle_loss = l1_loss(self._real_A, self._rec_A) + l1_loss(self._real_B, self._rec_B)
 
         # generator loss
-        dis_output_A = self._dis_A(self._fake_A)
-        dis_output_B = self._dis_B(self._fake_B)
+        dis_output_A = self._dis_A(self._fake_A).detach()
+        dis_output_B = self._dis_B(self._fake_B).detach()
         gen_loss_A = mse_loss(dis_output_A, torch.ones_like(dis_output_A))
         gen_loss_B = mse_loss(dis_output_B, torch.ones_like(dis_output_B))
 

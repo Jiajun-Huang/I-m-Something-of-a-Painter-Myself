@@ -4,6 +4,9 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import wandb
+from pprint import pprint
+from tqdm import tqdm
+import time
 from torch.utils.data import DataLoader
 import matplotlib.pyplot as plt
 from data_loader import Dataset
@@ -33,14 +36,14 @@ def train(model, data_loader, optimizer, args):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--epochs', type=int, default=100)
-    parser.add_argument('--batch_size', type=int, default=1)
+    parser.add_argument('--batch_size', type=int, default=16)
     parser.add_argument('--lr', type=float, default=0.0002)
     
     parser.add_argument('--data_path', type=str, default='data')
     parser.add_argument('--en_wandb', type=bool, default=True)
 
     # sample interval
-    parser.add_argument('--sample_interval', type=int, default=100)
+    parser.add_argument('--sample_interval', type=int, default=10)
     parser.add_argument('--save_interval', type=int, default=50)
 
     parser.add_argument('--nr_resnet', type=int, default=4)
@@ -53,7 +56,9 @@ if __name__ == '__main__':
     if args.en_wandb:
         wandb.init(project='Cycle-GAN')
         wandb.config.update(args)
+        wandb.config.current_time = time.strftime('%Y-%m-%d %H:%M:%S',time.localtime(time.time()))
 
+    pprint(vars(args))
 
     # set seed
     torch.manual_seed(args.seed)
@@ -73,21 +78,21 @@ if __name__ == '__main__':
     
     # train model
     for epoch in range(args.epochs):
-        for i, (real, fake) in enumerate(data_loader):
+        for i, (real, fake) in enumerate(tqdm(data_loader)):
             real = real.to(device)
             fake = fake.to(device)
             gan.optimize(real, fake)
 
             # logging 
-            gen_loss, dis_loss = gan.get_losses()
-            if args.en_wandb:
-                wandb.log({'train_gen_loss': gen_loss, 'train_dis_loss': dis_loss})
+            
 
         if epoch % args.sample_interval == 0:
             fake_A, fake_B = gan.sample(real_A=real, real_B=fake)
             # inverse process
             fake_A = Dataset.image_inverse_preprocess(fake_A)
             fake_B = Dataset.image_inverse_preprocess(fake_B)
+            real = Dataset.image_inverse_preprocess(real)
+            fake = Dataset.image_inverse_preprocess(fake)
             # save images to output
             # plt.imshow(fake_A[0].permute(1, 2, 0))
             # plt.savefig(f'output/fake_A_{epoch}.png')
@@ -95,9 +100,13 @@ if __name__ == '__main__':
             # plt.savefig(f'output/fake_B_{epoch}.png')
 
             if args.en_wandb:
+
                 wandb.log({'real_A': [wandb.Image(real)], 'fake_B': [wandb.Image(fake_B)], 'real_B': [wandb.Image(fake)], 'fake_A': [wandb.Image(fake_A)]})
             
+        gen_loss, dis_loss = gan.get_losses()
+        print(f'Epoch: {epoch}, Generator Loss: {gen_loss}, Discriminator Loss: {dis_loss}')
         if args.en_wandb:
+            wandb.log({'train_gen_loss': gen_loss, 'train_dis_loss': dis_loss})
             wandb.log({'epoch': epoch})        
             # if i % args.save_interval == 0:
             #     torch.save(gan.state_dict(), 'model.pth')
