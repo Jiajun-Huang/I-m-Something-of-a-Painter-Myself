@@ -1,5 +1,5 @@
 import torch.nn as nn
-
+import torch
 
 class ResnetBlock(nn.Module):
     def __init__(self, channel=3):
@@ -55,10 +55,11 @@ class Generator(nn.Module):
                 nn.ReLU(inplace=True)
             ]
         self.model += [nn.ReflectionPad2d(3)]
-        self.model += [nn.Conv2d(3, 3, kernel_size=7, padding=0)]
-        # self.model += [nn.Tanh()]
+        self.model += [nn.Conv2d(3, 3, kernel_size=13, padding=0)]
 
         self.model = nn.Sequential(*self.model)
+        
+        self.readout = nn.Parameter(torch.randn(dim, dim)) # solve chessboard effect
         
         
 
@@ -67,8 +68,9 @@ class Generator(nn.Module):
         input: x, (B, C, dim, dim)
         output: x, (B, C, dim, dim)
         '''
+        B, C, H, W = x.shape
         x = self.model(x)
-
+        x = x + self.readout[None, None, :, :]
         return x
     
 

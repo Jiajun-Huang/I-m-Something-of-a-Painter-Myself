@@ -37,12 +37,11 @@ class Dataset(Dataset):
         # random horizontal flip
         image = RandomHorizontalFlip()(image)
 
-        # transform image to -1 to 1
+        # transform image to [0, 1]
         image = image.type(torch.float32) / 255
 
-        # normalize image
+        # normalize image to [-1, 1]
         image = Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])(image)
-
         return image
 
     def image_inverse_preprocess(image):

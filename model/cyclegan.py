@@ -80,7 +80,7 @@ class Cycle_GAN(nn.Module):
         self._pred_fake_B = pred_fake_B
     
     def backward_G(self):
-        # Calculate the generator loss
+    # Calculate the generator loss
         mse_loss = nn.MSELoss()
         l1_loss = nn.L1Loss()
 
@@ -89,11 +89,13 @@ class Cycle_GAN(nn.Module):
         self._gen_BA.train()
 
         # cycle loss
-        cycle_loss = l1_loss(self._real_A, self._rec_A) + l1_loss(self._real_B, self._rec_B)
+        cycle_loss_A = l1_loss(self._real_A, self._rec_A)
+        cycle_loss_B = l1_loss(self._real_B, self._rec_B)
+        cycle_loss = cycle_loss_A + cycle_loss_B
 
         # generator loss
-        dis_output_A = self._dis_A(self._fake_A).detach()
-        dis_output_B = self._dis_B(self._fake_B).detach()
+        dis_output_A = self._dis_A(self._fake_A)
+        dis_output_B = self._dis_B(self._fake_B)
         gen_loss_A = mse_loss(dis_output_A, torch.ones_like(dis_output_A))
         gen_loss_B = mse_loss(dis_output_B, torch.ones_like(dis_output_B))
 
@@ -101,11 +103,13 @@ class Cycle_GAN(nn.Module):
         id_loss_A = l1_loss(self._real_A, self._gen_BA(self._real_A))
         id_loss_B = l1_loss(self._real_B, self._gen_AB(self._real_B))
 
-        gen_loss = cycle_loss * 10 + id_loss_A + id_loss_B + gen_loss_A + gen_loss_B
+        gen_loss = cycle_loss * 10 + (id_loss_A + id_loss_B) * 0.5 + gen_loss_A + gen_loss_B
         gen_loss.backward()
         self._gen_opt.step()
+
         self._gen_loss = {
-            'cycle_loss': cycle_loss,
+            'cycle_loss_A': cycle_loss_A,
+            'cycle_loss_B': cycle_loss_B,
             'id_loss_A': id_loss_A,
             'id_loss_B': id_loss_B,
             'gen_loss_A': gen_loss_A,
@@ -120,12 +124,18 @@ class Cycle_GAN(nn.Module):
         self._dis_B.train()
 
         loss = nn.MSELoss()
-        dis_loss_A = loss(self._pred_real_A, torch.ones_like(self._pred_real_A)) + loss(self._pred_fake_A, torch.zeros_like(self._pred_fake_A))
-        dis_loss_B = loss(self._pred_real_B, torch.ones_like(self._pred_real_B)) + loss(self._pred_fake_B, torch.zeros_like(self._pred_fake_B))
+        dis_loss_A_real = loss(self._pred_real_A, torch.ones_like(self._pred_real_A))
+        dis_loss_A_fake = loss(self._pred_fake_A, torch.zeros_like(self._pred_fake_A))
+        dis_loss_A = (dis_loss_A_real + dis_loss_A_fake) * 0.5
 
-        dis_loss = (dis_loss_A + dis_loss_B) / 2
+        dis_loss_B_real = loss(self._pred_real_B, torch.ones_like(self._pred_real_B))
+        dis_loss_B_fake = loss(self._pred_fake_B, torch.zeros_like(self._pred_fake_B))
+        dis_loss_B = (dis_loss_B_real + dis_loss_B_fake) * 0.5
+
+        dis_loss = (dis_loss_A + dis_loss_B) * 0.5
         dis_loss.backward()
         self._dis_opt.step()
+
         self._dis_loss = {
             'dis_loss_A': dis_loss_A,
             'dis_loss_B': dis_loss_B

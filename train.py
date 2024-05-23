@@ -87,10 +87,19 @@ if __name__ == '__main__':
             gen_loss, dis_loss = gan.get_losses()
             # sum up loss in the dictionary
 
-            # logging 
-            gen_loss_avg = dict(Counter(gen_loss_avg) + Counter(gen_loss))
-            dis_loss_avg = dict(Counter(dis_loss_avg) + Counter(dis_loss))
+            # logging iteration loss
+            for k, v in gen_loss.items():
+                if k in gen_loss_avg:
+                    gen_loss_avg[k] += v
+                else:
+                    gen_loss_avg[k] = v
+            for k, v in dis_loss.items():
+                if k in dis_loss_avg:
+                    dis_loss_avg[k] += v
+                else:
+                    dis_loss_avg[k] = v
 
+    
         gen_loss_avg = {k: v / i for k, v in gen_loss_avg.items()}
         dis_loss_avg = {k: v / i for k, v in dis_loss_avg.items()}
         gen_loss_avg_sum = sum(gen_loss_avg.values())
