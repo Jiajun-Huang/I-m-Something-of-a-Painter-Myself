@@ -3,7 +3,7 @@ import time
 from collections import Counter
 from pprint import pprint
 
-import matplotlib.pyplot as plt
+from torchvision.utils import save_image, make_grid
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -70,9 +70,10 @@ if __name__ == '__main__':
     
     # create data loader
     data_loader = DataLoader(CustomDataset("data/photo_jpg", "data/monet_jpg", args.batch_size), batch_size=args.batch_size, shuffle=True)
-
+    sample_data_loader = DataLoader(CustomDataset("data/photo_jpg", "data/monet_jpg", args.batch_size, augment=False), batch_size=args.batch_size, shuffle=False)
     # create optimizer
     optimizer = optim.Adam(gan.parameters(), lr=args.lr)
+    scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.1)
 
     # check if cuda is available
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -100,27 +101,31 @@ if __name__ == '__main__':
                     dis_loss_avg[k] += v
                 else:
                     dis_loss_avg[k] = v
+        scheduler.step()
 
-    
         gen_loss_avg = {k: v / i for k, v in gen_loss_avg.items()}
         dis_loss_avg = {k: v / i for k, v in dis_loss_avg.items()}
         gen_loss_avg_sum = sum(gen_loss_avg.values())
         dis_loss_avg_sum = sum(dis_loss_avg.values())
         if epoch % args.sample_interval == 0:
+            # sample data
+            real_A, real_B = next(iter(sample_data_loader))
+            real_A = real_A.to(device)
+            real_B = real_B.to(device)
             fake_A, fake_B = gan.sample(real_A=real_A, real_B=real_B)
             # inverse process
             fake_A = CustomDataset.image_inverse_preprocess(fake_A)
             fake_B = CustomDataset.image_inverse_preprocess(fake_B)
             real_A = CustomDataset.image_inverse_preprocess(real_A)
             real_B = CustomDataset.image_inverse_preprocess(real_B)
-            # save images to output
-            # plt.imshow(fake_A[0].permute(1, 2, 0))
-            # plt.savefig(f'output/fake_A_{epoch}.png')
-            # plt.imshow(fake_B[0].permute(1, 2, 0))
-            # plt.savefig(f'output/fake_B_{epoch}.png')
-
+            
+            # save images and make grid
+            save_image(make_grid(real_A, nrow=8), f'output/real_A_{epoch}.png')
+            save_image(make_grid(real_B, nrow=8), f'output/real_B_{epoch}.png')
+            save_image(make_grid(fake_A, nrow=8), f'output/fake_A_{epoch}.png')
+            save_image(make_grid(fake_B, nrow=8), f'output/fake_B_{epoch}.png')
+            
             if args.en_wandb:
-
                 wandb.log({'real_A': [wandb.Image(real_A)], 'fake_B': [wandb.Image(fake_B)], 'real_B': [wandb.Image(real_B)], 'fake_A': [wandb.Image(fake_A)]})
             
         print(f'Epoch: {epoch}, Generator Loss: {gen_loss}, Discriminator Loss: {dis_loss}')

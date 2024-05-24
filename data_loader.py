@@ -8,7 +8,7 @@ from torchvision.utils import save_image
 import matplotlib.pyplot as plt
 import random
 class CustomDataset(Dataset):
-    def __init__(self, real_image_path, fake_image_path, batch_size, shuffle=False):
+    def __init__(self, real_image_path, fake_image_path, batch_size, shuffle=False, augment=True):
         '''
         real_image_path: str
         fake_image_path: str
@@ -19,7 +19,7 @@ class CustomDataset(Dataset):
         self.shuffle = shuffle
         self.real_images = os.listdir(real_image_path)
         self.fake_images = os.listdir(fake_image_path)
-
+        self.augment = augment
         if self.shuffle:
             random.shuffle(self.real_images)
             random.shuffle(self.fake_images)
@@ -29,19 +29,18 @@ class CustomDataset(Dataset):
         image: (C, H, W)
         '''
         H, W = image.shape[1:]
+
+        if self.augment:
         # resize image to 1.12
-        image = Resize((int(H * 1.12), int(W * 1.12)))(image)
-
-        # random crop image
-        i, j, h, w = RandomCrop.get_params(image, output_size=(H, W))
-        image = image[:, i:i+h, j:j+w]
-
-        # random horizontal flip
-        image = RandomHorizontalFlip()(image)
+            image = Resize((int(H * 1.12), int(W * 1.12)))(image)
+            # random crop image
+            i, j, h, w = RandomCrop.get_params(image, output_size=(H, W))
+            image = image[:, i:i+h, j:j+w]
+            # random horizontal flip
+            image = RandomHorizontalFlip()(image)
 
         # transform image to [0, 1]
         image = image / 255.0
-
         # normalize image
         image = Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])(image)
         return image
