@@ -42,7 +42,7 @@ if __name__ == '__main__':
     parser.add_argument('--lr', type=float, default=0.0002)
     
     parser.add_argument('--data_path', type=str, default='data')
-    parser.add_argument('--en_wandb', type=bool, default=False)
+    parser.add_argument('--en_wandb', type=bool, default=True)
 
     # sample interval
     parser.add_argument('--sample_interval', type=int, default=10)

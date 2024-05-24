@@ -25,11 +25,11 @@ class ResnetBlock(nn.Module):
 
 class Generator(nn.Module):
 
-    def __init__(self, in_out_channel = 3, num_residual_blocks=7):
+    def __init__(self, in_out_channel = 3, num_residual_blocks=9):
         super(Generator, self).__init__()
         # use covolutional layers
         self.model = []
-        num_up_downsampling = 3
+        num_up_downsampling = 2
         # down sampling
         for i in range(num_up_downsampling):
             c_in = in_out_channel * 2** i
