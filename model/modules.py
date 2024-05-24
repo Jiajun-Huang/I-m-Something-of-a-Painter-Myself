@@ -25,18 +25,18 @@ class ResnetBlock(nn.Module):
 
 class Generator(nn.Module):
 
-    def __init__(self, dim=256, in_out_channel = 3, num_residual_blocks=3):
+    def __init__(self, in_out_channel = 3, num_residual_blocks=7):
         super(Generator, self).__init__()
         # use covolutional layers
         self.model = []
-        num_up_downsampling = 2
+        num_up_downsampling = 3
         # down sampling
         for i in range(num_up_downsampling):
             c_in = in_out_channel * 2** i
             c_out = in_out_channel * 2 ** (i+1)
             self.model += [
                 nn.Conv2d(c_in, c_out, kernel_size=3, stride=2, padding=1), # [(W−K+2P)/S]+1  256 - 3 + 1 = 254
-                nn.BatchNorm2d(c_out),
+                nn.InstanceNorm2d(c_out),
                 nn.ReLU(inplace=True)
             ]
 
@@ -49,17 +49,22 @@ class Generator(nn.Module):
         for i in range(num_up_downsampling):
             c_in = in_out_channel * 2 ** (num_up_downsampling - i)
             c_out = in_out_channel * 2 ** (num_up_downsampling - i - 1)
-            self.model += [
-                nn.ConvTranspose2d(c_in, c_out, kernel_size=3, stride=2, output_padding=1, padding=1),
-                nn.BatchNorm2d(c_out),
+            # self.model += [
+            #     nn.ConvTranspose2d(c_in, c_out, kernel_size=3, stride=2, output_padding=1, padding=1),
+            #     nn.BatchNorm2d(c_out),
+            #     nn.ReLU(inplace=True)
+            # ]
+            self.model += [ # upsample + conv for chessboard effect
+                nn.Upsample(scale_factor=2),
+                nn.Conv2d(c_in, c_out, kernel_size=3, padding=1),
+                nn.InstanceNorm2d(c_out),
                 nn.ReLU(inplace=True)
             ]
         self.model += [nn.ReflectionPad2d(3)]
-        self.model += [nn.Conv2d(3, 3, kernel_size=13, padding=0)]
-
+        self.model += [nn.Conv2d(3, 3, kernel_size=7, padding=0)]
+        self.model += [nn.Tanh()]
         self.model = nn.Sequential(*self.model)
-        
-        self.readout = nn.Parameter(torch.randn(dim, dim)) # solve chessboard effect
+
         
         
 
@@ -70,13 +75,12 @@ class Generator(nn.Module):
         '''
         B, C, H, W = x.shape
         x = self.model(x)
-        x = x + self.readout[None, None, :, :]
         return x
     
 
 class Discriminator(nn.Module):
 
-    def __init__(self, num_upsampling=2):
+    def __init__(self, num_upsampling=3):
         super(Discriminator, self).__init__()
         # up sampling
         self.model = []
@@ -89,7 +93,7 @@ class Discriminator(nn.Module):
                 nn.InstanceNorm2d(c_out),
                 nn.LeakyReLU(0.2, inplace=True)
             ]
-
+    
         self.model += [
             nn.Conv2d(c_out, 1, 3, 1, 1)
         ]

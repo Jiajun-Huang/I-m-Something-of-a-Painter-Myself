@@ -1,49 +1,52 @@
 import os
-import pdb
-
-import matplotlib.pyplot as plt
-import pandas as pd
 import torch
 from torch.utils.data import DataLoader, Dataset
 from torchvision.io import read_image
 from torchvision.transforms import (Compose, Normalize, RandomCrop,
-                                    RandomHorizontalFlip, Resize)
-from tqdm import tqdm
-
-
-class Dataset(Dataset):
-    def __init__(self, real_image_path,fake_image_path, batch_size, sheffle=False):
+                                    RandomHorizontalFlip, Resize, ToTensor)
+from torchvision.utils import save_image
+import matplotlib.pyplot as plt
+import random
+class CustomDataset(Dataset):
+    def __init__(self, real_image_path, fake_image_path, batch_size, shuffle=False):
         '''
-        data_path: str
+        real_image_path: str
+        fake_image_path: str
         '''
         self.real_image_path = real_image_path
         self.fake_image_path = fake_image_path
         self.batch_size = batch_size
-        self.sheffle = sheffle
+        self.shuffle = shuffle
         self.real_images = os.listdir(real_image_path)
         self.fake_images = os.listdir(fake_image_path)
 
+        if self.shuffle:
+            random.shuffle(self.real_images)
+            random.shuffle(self.fake_images)
+
     def image_preprocess(self, image):
         '''
-        image: (B, C, H, W)
+        image: (C, H, W)
         '''
-        # resize image to 286 x 286
-        image = Resize((286, 286))(image)
+        H, W = image.shape[1:]
+        # resize image to 1.12
+        image = Resize((int(H * 1.12), int(W * 1.12)))(image)
 
         # random crop image
-        i, j, h, w = RandomCrop.get_params(image, output_size=(256, 256))
+        i, j, h, w = RandomCrop.get_params(image, output_size=(H, W))
         image = image[:, i:i+h, j:j+w]
 
         # random horizontal flip
         image = RandomHorizontalFlip()(image)
 
         # transform image to [0, 1]
-        image = image.type(torch.float32) / 255
+        image = image / 255.0
 
-        # normalize image to [-1, 1]
+        # normalize image
         image = Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])(image)
         return image
 
+    @staticmethod
     def image_inverse_preprocess(image):
         '''
         image: (B, C, H, W)
@@ -54,48 +57,34 @@ class Dataset(Dataset):
 
         # Denormalize the image
         image = image * std[None, :, None, None] + mean[None, :, None, None]
-
-        # Transform image back to [0, 255]
-        image = image * 255.0
-        image = image.type(torch.uint8)
         return image
 
     def __len__(self):
-        return len(max(self.real_images, self.fake_images, key=len))
+        return max(len(self.real_images), len(self.fake_images))
     
     def __getitem__(self, idx):
         '''
-        image: (B, C, H, W)
+        image: (C, H, W)
         '''
-        idx_real = idx % len(self.real_images)
-        idx_fake = idx % len(self.fake_images)
-        real_img_path = os.path.join(self.real_image_path, self.real_images[idx_real])
-        fake_img_path = os.path.join(self.fake_image_path, self.fake_images[idx_fake])
-        real_image = read_image(real_img_path)
-        fake_image = read_image(fake_img_path)
-        
-        real_image = self.image_preprocess(real_image)
-        fake_image = self.image_preprocess(fake_image)
+        idx_real_A = idx % len(self.real_images)
+        idx_real_B = idx % len(self.fake_images)
+        real_A_img_path = os.path.join(self.real_image_path, self.real_images[idx_real_A])
+        real_B_img_path = os.path.join(self.fake_image_path, self.fake_images[idx_real_B])
+        real_A_image = read_image(real_A_img_path)
+        real_B_image = read_image(real_B_img_path)
+        real_A_image = self.image_preprocess(real_A_image)
+        real_B_image = self.image_preprocess(real_B_image)
 
-        return real_image, fake_image
-        
+        return real_A_image, real_B_image
 
 if __name__ == '__main__':
-    data_loader = DataLoader(Dataset("data/photo_jpg", "data/monet_jpg", 1), batch_size=1)
+    data_loader = DataLoader(CustomDataset("data/photo_jpg", "data/monet_jpg", 1), batch_size=1, shuffle=False)
     
     for i, (real, fake) in enumerate(data_loader):
-        real_image = Dataset.image_inverse_preprocess(real)
-        fake_image = Dataset.image_inverse_preprocess(fake)
+        real = CustomDataset.image_inverse_preprocess(real)
+        fake = CustomDataset.image_inverse_preprocess(fake)
 
-        plt.imshow(real_image[0].permute(1, 2, 0))
-        plt.imshow(fake_image[0].permute(1, 2, 0))
-        plt.show()
+        save_image(real, f"real_A_image_{i}.png")
+        save_image(fake, f"real_B_image_{i}.png")
 
-
-        
-    
-
-
-
-    
-        
+        plt.imshow(real[0].permute(1, 2, 0))

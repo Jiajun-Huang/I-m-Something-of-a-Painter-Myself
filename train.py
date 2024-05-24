@@ -1,19 +1,21 @@
 import argparse
+import time
+from collections import Counter
+from pprint import pprint
 
+import matplotlib.pyplot as plt
 import torch
 import torch.nn as nn
 import torch.optim as optim
-import wandb
-from pprint import pprint
-from tqdm import tqdm
-import time
 from torch.utils.data import DataLoader
-import matplotlib.pyplot as plt
-from data_loader import Dataset
+from tqdm import tqdm
+
+import wandb
+from data_loader import CustomDataset
 from model.cyclegan import Cycle_GAN
 from model.modules import Discriminator, Generator
 
-from collections import Counter
+
 def train(model, data_loader, optimizer, args):
     '''
     model: Cycle_GAN model
@@ -40,7 +42,7 @@ if __name__ == '__main__':
     parser.add_argument('--lr', type=float, default=0.0002)
     
     parser.add_argument('--data_path', type=str, default='data')
-    parser.add_argument('--en_wandb', type=bool, default=True)
+    parser.add_argument('--en_wandb', type=bool, default=False)
 
     # sample interval
     parser.add_argument('--sample_interval', type=int, default=10)
@@ -67,7 +69,7 @@ if __name__ == '__main__':
     gan = Cycle_GAN()
     
     # create data loader
-    data_loader = DataLoader(Dataset("data/photo_jpg", "data/monet_jpg", args.batch_size), batch_size=args.batch_size, shuffle=True)
+    data_loader = DataLoader(CustomDataset("data/photo_jpg", "data/monet_jpg", args.batch_size), batch_size=args.batch_size, shuffle=True)
 
     # create optimizer
     optimizer = optim.Adam(gan.parameters(), lr=args.lr)
@@ -107,10 +109,10 @@ if __name__ == '__main__':
         if epoch % args.sample_interval == 0:
             fake_A, fake_B = gan.sample(real_A=real_A, real_B=real_B)
             # inverse process
-            fake_A = Dataset.image_inverse_preprocess(fake_A)
-            fake_B = Dataset.image_inverse_preprocess(fake_B)
-            real_A = Dataset.image_inverse_preprocess(real_A)
-            real_B = Dataset.image_inverse_preprocess(real_B)
+            fake_A = CustomDataset.image_inverse_preprocess(fake_A)
+            fake_B = CustomDataset.image_inverse_preprocess(fake_B)
+            real_A = CustomDataset.image_inverse_preprocess(real_A)
+            real_B = CustomDataset.image_inverse_preprocess(real_B)
             # save images to output
             # plt.imshow(fake_A[0].permute(1, 2, 0))
             # plt.savefig(f'output/fake_A_{epoch}.png')
