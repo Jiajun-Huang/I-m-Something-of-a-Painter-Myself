@@ -24,10 +24,10 @@ class Cycle_GAN(nn.Module):
     def __init__(self):
         super(Cycle_GAN, self).__init__()
         # Define the generator and discriminator
-        self._gen_AB = Generator()
-        self._gen_BA = Generator()
-        self._dis_A = Discriminator()
-        self._dis_B = Discriminator()
+        self._gen_AB = Generator(device='cuda')
+        self._gen_BA = Generator(device='cuda')
+        self._dis_A = Discriminator(device='cuda')
+        self._dis_B = Discriminator(device='cuda')
 
         # forward buffers
         self._fake_A = None

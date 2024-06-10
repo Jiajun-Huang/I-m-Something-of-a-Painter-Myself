@@ -42,7 +42,7 @@ if __name__ == '__main__':
     parser.add_argument('--lr', type=float, default=0.0002)
     
     parser.add_argument('--data_path', type=str, default='data')
-    parser.add_argument('--en_wandb', type=bool, default=True)
+    parser.add_argument('--en_wandb', type=bool, default=False)
 
     # sample interval
     parser.add_argument('--sample_interval', type=int, default=10)
@@ -67,6 +67,8 @@ if __name__ == '__main__':
 
     # create model
     gan = Cycle_GAN()
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    gan = gan.to(device)
     
     # create data loader
     data_loader = DataLoader(CustomDataset("data/photo_jpg", "data/monet_jpg", args.batch_size), batch_size=args.batch_size, shuffle=True)
@@ -76,8 +78,6 @@ if __name__ == '__main__':
     scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.1)
 
     # check if cuda is available
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    gan.to(device)
     
     # train model
     for epoch in range(args.epochs):
